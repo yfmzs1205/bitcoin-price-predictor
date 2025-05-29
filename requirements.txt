@@ -1,8 +1,7 @@
 streamlit
 pandas
 numpy
-requests
 scikit-learn
-tensorflow
-matplotlib
 plotly
+tensorflow==2.10.0
+requests
