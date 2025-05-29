@@ -1,25 +1,24 @@
+import xgboost as xgb
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+import pandas as pd
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
 
-def build_and_train_model(df):
-    feature_cols = ["close", "ma5", "ma10", "rsi", "return_1min", "return_3min"]
-    sequence_length = 10
-    df = df.copy()
-    scaler = MinMaxScaler()
-    df[feature_cols] = scaler.fit_transform(df[feature_cols])
+def train_xgb_model(df, target_column):
+    X = df.drop(columns=[target_column])
+    y = df[target_column]
 
-    X, y = [], []
-    for i in range(len(df) - sequence_length):
-        X.append(df[feature_cols].iloc[i:i+sequence_length].values)
-        y.append(df["target"].iloc[i+sequence_length])
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    X, y = np.array(X), np.array(y)
-    model = Sequential([
-        LSTM(64, input_shape=(X.shape[1], X.shape[2])),
-        Dense(1, activation="sigmoid")
-    ])
-    model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
-    model.fit(X, y, epochs=5, batch_size=32, verbose=0)
-    return model, scaler
+    model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='logloss')
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict(X_test)
+    acc = accuracy_score(y_test, y_pred)
+
+    return model, acc
+
+def predict_trend(model, latest_features_df):
+    prediction = model.predict(latest_features_df)
+    proba = model.predict_proba(latest_features_df)[0]
+    return prediction[0], proba
